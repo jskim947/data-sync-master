@@ -26,26 +26,33 @@ services:
       - fs_master_network_remote
     restart: unless-stopped
 
-  # FS Master 웹 애플리케이션 (원격 개발 모드)
+  # FS Master 웹 애플리케이션 (원격 개발 모드 - 자동 반영)
   web:
     build: 
       context: .
       dockerfile: Dockerfile.remote-dev
     container_name: fs_master_web_remote
     environment:
-      - FLASK_ENV=production
-      - FLASK_DEBUG=0
+      - FLASK_ENV=development
+      - FLASK_DEBUG=1
       - DATABASE_URL=postgresql://postgres:infomax@postgres:5432/fs_master_web
       - REDIS_URL=redis://redis:6379/0
     ports:
       - "5000:5000"
+    volumes:
+      # 코드 변경사항 즉시 반영을 위한 볼륨 마운트
+      - ./app.py:/app/app.py
+      - ./db_connection_test:/app/db_connection_test
+      - ./templates:/app/templates
+      - ./logs:/app/logs
+      - ./jdbc-drivers:/app/jdbc-drivers
     depends_on:
       - postgres
       - redis
     networks:
       - fs_master_network_remote
     restart: unless-stopped
-    command: python app.py --host 0.0.0.0 --port 5000
+    command: python app.py --debug --host 0.0.0.0 --port 5000
 
 volumes:
   postgres_data_remote:
