@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+
+{% block title %}대시보드 - FS Master{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">
+        <i class="fas fa-tachometer-alt me-2"></i>
+        대시보드
+    </h1>
+</div>
+
+<!-- 통계 카드 -->
+<div class="row mb-4">
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-primary shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                            총 배치 작업
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_jobs }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-tasks fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-success shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                            활성 작업
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ active_jobs }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-play-circle fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-info shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                            총 스케줄
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_schedules }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-clock fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-warning shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                            활성 스케줄
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ active_schedules }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-calendar fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 최근 실행 로그 -->
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="fas fa-list-alt me-2"></i>
+                    최근 실행 로그
+                </h6>
+                <a href="{{ url_for('logs') }}" class="btn btn-sm btn-primary">
+                    전체 보기
+                </a>
+            </div>
+            <div class="card-body">
+                {% if recent_logs %}
+                <div class="table-responsive">
+                    <table class="table table-bordered" width="100%" cellspacing="0">
+                        <thead>
+                            <tr>
+                                <th>작업명</th>
+                                <th>상태</th>
+                                <th>처리 행수</th>
+                                <th>소요시간</th>
+                                <th>시작시간</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for log in recent_logs %}
+                            <tr>
+                                <td>{{ log.job.name }}</td>
+                                <td>
+                                    {% if log.status == 'success' %}
+                                        <span class="badge bg-success">성공</span>
+                                    {% elif log.status == 'failed' %}
+                                        <span class="badge bg-danger">실패</span>
+                                    {% elif log.status == 'running' %}
+                                        <span class="badge bg-warning">실행중</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ "{:,}".format(log.total_rows) if log.total_rows else '-' }}</td>
+                                <td>{{ "%.2f초"|format(log.duration_seconds) if log.duration_seconds else '-' }}</td>
+                                <td>{{ format_kst_time(log.started_at) if log.started_at else '-' }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="fas fa-inbox fa-3x text-gray-300 mb-3"></i>
+                    <p class="text-gray-500">아직 실행된 로그가 없습니다.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 빠른 액션 -->
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="fas fa-bolt me-2"></i>
+                    빠른 액션
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        <a href="{{ url_for('add_server') }}" class="btn btn-outline-primary w-100">
+                            <i class="fas fa-plus me-2"></i>
+                            서버 추가
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <a href="{{ url_for('add_job') }}" class="btn btn-outline-success w-100">
+                            <i class="fas fa-plus me-2"></i>
+                            배치 작업 추가
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <a href="{{ url_for('add_schedule') }}" class="btn btn-outline-info w-100">
+                            <i class="fas fa-plus me-2"></i>
+                            스케줄 추가
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <a href="{{ url_for('query') }}" class="btn btn-outline-warning w-100">
+                            <i class="fas fa-search me-2"></i>
+                            쿼리 실행
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

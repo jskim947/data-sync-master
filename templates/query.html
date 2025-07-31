@@ -1,0 +1,264 @@
+{% extends "base.html" %}
+
+{% block title %}쿼리 실행 - FS Master{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">
+        <i class="fas fa-search me-2"></i>
+        쿼리 실행
+    </h1>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="fas fa-database me-2"></i>
+                    데이터베이스 쿼리 실행
+                </h6>
+            </div>
+            <div class="card-body">
+                <form id="queryForm">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="server" class="form-label">서버 선택</label>
+                            <select class="form-select" id="server" name="server" required>
+                                <option value="">서버를 선택하세요</option>
+                                {% for server in servers %}
+                                <option value="{{ server.name }}">{{ server.name }} ({{ server.type }})</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="queryType" class="form-label">결과 형식</label>
+                            <select class="form-select" id="queryType" name="queryType">
+                                <option value="with_columns">컬럼명과 함께 표시</option>
+                                <option value="simple">단순 결과만 표시</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="query" class="form-label">SQL 쿼리</label>
+                        <textarea class="form-control" id="query" name="query" rows="8" placeholder="SELECT * FROM table_name LIMIT 100" required></textarea>
+                        <div class="form-text">여러 줄 쿼리를 지원합니다.</div>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-play me-2"></i>
+                            쿼리 실행
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" onclick="clearForm()">
+                            <i class="fas fa-eraser me-2"></i>
+                            초기화
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 결과 표시 영역 -->
+<div class="row" id="resultArea" style="display: none;">
+    <div class="col-12">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="fas fa-table me-2"></i>
+                    쿼리 결과
+                </h6>
+                <div>
+                    <span id="resultInfo" class="badge bg-info me-2"></span>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="exportToCSV()">
+                        <i class="fas fa-download me-1"></i>
+                        CSV 다운로드
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div id="resultContent">
+                    <!-- 결과가 여기에 표시됩니다 -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 로딩 스피너 -->
+<div id="loadingSpinner" class="text-center" style="display: none;">
+    <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Loading...</span>
+    </div>
+    <p class="mt-2">쿼리를 실행하고 있습니다...</p>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let queryResult = null;
+
+$(document).ready(function() {
+    $('#queryForm').on('submit', function(e) {
+        e.preventDefault();
+        executeQuery();
+    });
+});
+
+function executeQuery() {
+    const server = $('#server').val();
+    const query = $('#query').val();
+    const queryType = $('#queryType').val();
+    
+    if (!server || !query) {
+        alert('서버와 쿼리를 입력해주세요.');
+        return;
+    }
+    
+    // 로딩 표시
+    $('#loadingSpinner').show();
+    $('#resultArea').hide();
+    
+    $.ajax({
+        url: '/query/execute',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({
+            server: server,
+            query: query,
+            queryType: queryType
+        }),
+        success: function(response) {
+            if (response.success) {
+                queryResult = response.result;
+                displayResult(response.result);
+            } else {
+                showError(response.error);
+            }
+        },
+        error: function(xhr, status, error) {
+            showError('쿼리 실행 중 오류가 발생했습니다: ' + error);
+        },
+        complete: function() {
+            $('#loadingSpinner').hide();
+        }
+    });
+}
+
+function displayResult(result) {
+    const resultArea = $('#resultArea');
+    const resultContent = $('#resultContent');
+    const resultInfo = $('#resultInfo');
+    
+    // 결과 정보 표시
+    resultInfo.text(`${result.row_count}행 조회됨`);
+    
+    if (result.queryType === 'with_columns' && result.columns && result.columns.length > 0) {
+        // 컬럼명과 함께 표시
+        let tableHtml = '<div class="table-responsive"><table class="table table-striped table-bordered">';
+        
+        // 헤더
+        tableHtml += '<thead><tr>';
+        result.columns.forEach(function(column) {
+            tableHtml += `<th>${column}</th>`;
+        });
+        tableHtml += '</tr></thead>';
+        
+        // 데이터
+        tableHtml += '<tbody>';
+        result.rows.forEach(function(row) {
+            tableHtml += '<tr>';
+            row.forEach(function(cell) {
+                tableHtml += `<td>${cell !== null ? cell : ''}</td>`;
+            });
+            tableHtml += '</tr>';
+        });
+        tableHtml += '</tbody></table></div>';
+        
+        resultContent.html(tableHtml);
+    } else {
+        // 단순 결과 표시
+        let resultHtml = '<div class="table-responsive"><table class="table table-striped table-bordered">';
+        result.rows.forEach(function(row, index) {
+            resultHtml += '<tr>';
+            resultHtml += `<td><strong>${index + 1}</strong></td>`;
+            resultHtml += `<td>${JSON.stringify(row)}</td>`;
+            resultHtml += '</tr>';
+        });
+        resultHtml += '</table></div>';
+        
+        resultContent.html(resultHtml);
+    }
+    
+    resultArea.show();
+}
+
+function showError(error) {
+    const resultArea = $('#resultArea');
+    const resultContent = $('#resultContent');
+    const resultInfo = $('#resultInfo');
+    
+    resultInfo.text('오류 발생');
+    resultInfo.removeClass('bg-info').addClass('bg-danger');
+    
+    resultContent.html(`
+        <div class="alert alert-danger">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            <strong>오류:</strong> ${error}
+        </div>
+    `);
+    
+    resultArea.show();
+}
+
+function clearForm() {
+    $('#queryForm')[0].reset();
+    $('#resultArea').hide();
+    queryResult = null;
+}
+
+function exportToCSV() {
+    if (!queryResult || !queryResult.rows || queryResult.rows.length === 0) {
+        alert('내보낼 데이터가 없습니다.');
+        return;
+    }
+    
+    let csvContent = '';
+    
+    if (queryResult.columns && queryResult.columns.length > 0) {
+        // 컬럼명 추가
+        csvContent += queryResult.columns.join(',') + '\n';
+    }
+    
+    // 데이터 추가
+    queryResult.rows.forEach(function(row) {
+        const csvRow = row.map(function(cell) {
+            if (cell === null || cell === undefined) {
+                return '';
+            }
+            // CSV에서 특수문자 처리
+            const cellStr = String(cell);
+            if (cellStr.includes(',') || cellStr.includes('"') || cellStr.includes('\n')) {
+                return '"' + cellStr.replace(/"/g, '""') + '"';
+            }
+            return cellStr;
+        });
+        csvContent += csvRow.join(',') + '\n';
+    });
+    
+    // 파일 다운로드
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `query_result_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+</script>
+{% endblock %} 

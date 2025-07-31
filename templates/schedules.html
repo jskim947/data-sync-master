@@ -1,0 +1,1014 @@
+{% extends "base.html" %}
+
+{% block title %}스케줄 관리{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>스케줄 관리</h2>
+        <div>
+            <button type="button" class="btn btn-warning me-2" onclick="restoreSchedules()" title="앱 재시작 후 스케줄러 등록을 복원합니다">
+                <i class="fas fa-sync-alt"></i> 스케줄 복원
+            </button>
+            <button type="button" class="btn btn-primary" data-bs-toggle="collapse" data-bs-target="#addScheduleForm">
+                <i class="fas fa-plus"></i> 새 스케줄 추가
+            </button>
+        </div>
+    </div>
+
+    <!-- 스케줄 추가 폼 (접을 수 있음) -->
+    <div class="collapse mb-4" id="addScheduleForm">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-plus"></i> 새 스케줄 추가</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('add_schedule') }}">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label for="job_id" class="form-label">배치 작업 *</label>
+                                <select class="form-select" id="job_id" name="job_id" required>
+                                    <option value="">작업 선택</option>
+                                    {% for job in jobs %}
+                                    <option value="{{ job.id }}">{{ job.name }} ({{ job.source_server }} → {{ job.target_server }})</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label for="hour" class="form-label">시간 *</label>
+                                <select class="form-select" id="hour" name="hour" required>
+                                    <option value="0">00시 (자정)</option>
+                                    <option value="1">01시</option>
+                                    <option value="2">02시</option>
+                                    <option value="3">03시</option>
+                                    <option value="4">04시</option>
+                                    <option value="5">05시</option>
+                                    <option value="6">06시</option>
+                                    <option value="7">07시</option>
+                                    <option value="8">08시</option>
+                                    <option value="9" selected>09시</option>
+                                    <option value="10">10시</option>
+                                    <option value="11">11시</option>
+                                    <option value="12">12시 (정오)</option>
+                                    <option value="13">13시</option>
+                                    <option value="14">14시</option>
+                                    <option value="15">15시</option>
+                                    <option value="16">16시</option>
+                                    <option value="17">17시</option>
+                                    <option value="18">18시</option>
+                                    <option value="19">19시</option>
+                                    <option value="20">20시</option>
+                                    <option value="21">21시</option>
+                                    <option value="22">22시</option>
+                                    <option value="23">23시</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="mb-3">
+                                <label for="minute" class="form-label">분</label>
+                                <select class="form-select" id="minute" name="minute">
+                                    <option value="0" selected>00분</option>
+                                    <option value="5">05분</option>
+                                    <option value="10">10분</option>
+                                    <option value="15">15분</option>
+                                    <option value="20">20분</option>
+                                    <option value="25">25분</option>
+                                    <option value="30">30분</option>
+                                    <option value="35">35분</option>
+                                    <option value="40">40분</option>
+                                    <option value="45">45분</option>
+                                    <option value="50">50분</option>
+                                    <option value="55">55분</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="mb-3">
+                                <label for="frequency" class="form-label">실행 주기</label>
+                                <select class="form-select" id="frequency" name="frequency">
+                                    <option value="daily" selected>매일</option>
+                                    <option value="weekly">매주</option>
+                                    <option value="workdays">월~금</option>
+                                    <option value="weekends">토~일</option>
+                                    <option value="monthly">매월</option>
+                                    <option value="interval">간격</option>
+                                    <option value="multiple">여러 시간</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="mb-3">
+                                <label class="form-label">&nbsp;</label>
+                                <div class="d-grid">
+                                    <button type="submit" class="btn btn-success">
+                                        <i class="fas fa-save"></i> 스케줄 추가
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 주간/월간 설정 (조건부 표시) -->
+                    <div class="row mt-3" id="weeklySettings" style="display: none;">
+                        <div class="col-md-12">
+                            <label class="form-label">요일</label>
+                            <div class="row">
+                                <div class="col-md-1">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="weekday_0" value="0">
+                                        <label class="form-check-label" for="weekday_0">일</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-1">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="weekday_1" value="1">
+                                        <label class="form-check-label" for="weekday_1">월</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-1">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="weekday_2" value="2">
+                                        <label class="form-check-label" for="weekday_2">화</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-1">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="weekday_3" value="3">
+                                        <label class="form-check-label" for="weekday_3">수</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-1">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="weekday_4" value="4">
+                                        <label class="form-check-label" for="weekday_4">목</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-1">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="weekday_5" value="5">
+                                        <label class="form-check-label" for="weekday_5">금</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-1">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="weekday_6" value="6">
+                                        <label class="form-check-label" for="weekday_6">토</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mt-3" id="monthlySettings" style="display: none;">
+                        <div class="col-md-6">
+                            <label class="form-label">일</label>
+                            <select class="form-select" id="day" name="day">
+                                <option value="1">1일</option>
+                                <option value="15">15일</option>
+                                <option value="28">28일</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="row mt-3" id="intervalSettings" style="display: none;">
+                        <div class="col-md-6">
+                            <label class="form-label">간격</label>
+                            <select class="form-select" id="interval" name="interval">
+                                <option value="1">1시간마다</option>
+                                <option value="6">6시간마다</option>
+                                <option value="12">12시간마다</option>
+                                <option value="24">24시간마다</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="row mt-3" id="multipleSettings" style="display: none;">
+                        <div class="col-md-6">
+                            <label class="form-label">여러 시간 설정</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="multipleTimes" name="multipleTimes" placeholder="예: 9,18 (9시, 18시)">
+                                <span class="input-group-text">시</span>
+                            </div>
+                            <div class="form-text">여러 시간은 쉼표로 구분하세요.</div>
+                        </div>
+                    </div>
+                    
+                    <!-- 숨겨진 Cron 표현식 필드 -->
+                    <input type="hidden" id="cron_expression" name="cron_expression" value="0 9 * * *">
+                    
+                    <div class="mt-3">
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i> 
+                            <strong>설정된 실행 시간:</strong> 
+                            <span id="cronDescription">매일 09시 00분</span>
+                            <br>
+                            <small class="text-muted">⚠️ 모든 시간은 KST(한국 표준시) 기준입니다.</small>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    {% if schedules %}
+    <!-- 배치 작업별로 그룹화된 스케줄 목록 -->
+    {% set job_groups = {} %}
+    {% for schedule in schedules %}
+        {% if schedule.job.id not in job_groups %}
+            {% set _ = job_groups.update({schedule.job.id: {'job': schedule.job, 'schedules': []}}) %}
+        {% endif %}
+        {% set _ = job_groups[schedule.job.id]['schedules'].append(schedule) %}
+    {% endfor %}
+
+    {% for job_id, group in job_groups.items() %}
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="mb-0">
+                        <i class="fas fa-tasks"></i> {{ group.job.name }}
+                    </h5>
+                    {% if group.job.description %}
+                    <small>{{ group.job.description }}</small>
+                    {% endif %}
+                </div>
+                <div>
+                    <span class="badge bg-light text-dark">{{ group.schedules|length }}개 스케줄</span>
+                </div>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 80px;">ID</th>
+                            <th style="width: 200px;">실행 시간</th>
+                            <th style="width: 120px;" title="사용자가 설정한 활성/비활성 상태&#10;• 활성: 스케줄이 실행되도록 설정됨&#10;• 비활성: 스케줄이 실행되지 않도록 설정됨&#10;• 등록 실패: 활성으로 설정했지만 스케줄러 등록에 실패함">상태 <i class="fas fa-question-circle text-muted"></i></th>
+                            <th style="width: 120px;" title="실제 스케줄러에 등록되어 있는지 여부&#10;• 등록됨: 스케줄러에 정상적으로 등록되어 실행 대기 중&#10;• 미등록: 스케줄러에 등록되지 않아 실행되지 않음">스케줄러 <i class="fas fa-question-circle text-muted"></i></th>
+                            <th style="width: 180px;">마지막 실행</th>
+                            <th style="width: 180px;">다음 실행</th>
+                            <th style="width: 150px;">생성일</th>
+                            <th style="width: 200px;">작업</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for schedule in group.schedules %}
+                        <tr>
+                            <td>
+                                <span class="badge bg-secondary">#{{ schedule.id }}</span>
+                            </td>
+                            <td>
+                                <div>
+                                    <code class="small">{{ schedule.cron_expression }}</code>
+                                </div>
+                                <div class="text-muted small">
+                                    {{ parse_cron_expression(schedule.cron_expression) }}
+                                </div>
+                            </td>
+                            <td>
+                                {% if schedule.is_active %}
+                                    {% if schedule.scheduler_registered %}
+                                    <span class="badge bg-success">
+                                        <i class="fas fa-play"></i> 활성
+                                    </span>
+                                    {% else %}
+                                    <span class="badge bg-warning">
+                                        <i class="fas fa-exclamation-triangle"></i> 등록 실패
+                                    </span>
+                                    {% endif %}
+                                {% else %}
+                                <span class="badge bg-secondary">
+                                    <i class="fas fa-pause"></i> 비활성
+                                </span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if schedule.scheduler_registered %}
+                                <span class="badge bg-success">
+                                    <i class="fas fa-check"></i> 등록됨
+                                </span>
+                                {% else %}
+                                <span class="badge bg-danger">
+                                    <i class="fas fa-times"></i> 미등록
+                                </span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if schedule.last_run %}
+                                <div class="small">{{ format_kst_time(schedule.last_run, '%m-%d %H:%M') }}</div>
+                                <div class="text-muted small">{{ format_kst_time(schedule.last_run, '%Y') }}</div>
+                                {% else %}
+                                <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if schedule.scheduler_next_run %}
+                                <div class="small">{{ schedule.scheduler_next_run }}</div>
+                                <div class="text-muted small">{{ schedule.scheduler_next_run_year }}</div>
+                                {% elif schedule.next_run %}
+                                <div class="small">{{ format_db_kst_time(schedule.next_run, '%m-%d %H:%M') }}</div>
+                                <div class="text-muted small">{{ format_db_kst_time(schedule.next_run, '%Y') }}</div>
+                                {% else %}
+                                <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="small">{{ format_kst_time(schedule.created_at, '%m-%d %H:%M') }}</div>
+                                <div class="text-muted small">{{ format_kst_time(schedule.created_at, '%Y') }}</div>
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <button type="button" class="btn btn-outline-success" 
+                                            onclick="testSchedule({{ schedule.id }})" title="테스트 실행">
+                                        <i class="fas fa-play"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-outline-warning" 
+                                            onclick="editSchedule({{ schedule.id }}, '{{ schedule.cron_expression }}', '{{ 'true' if schedule.is_active else 'false' }}')">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <form method="POST" action="{{ url_for('delete_schedule', schedule_id=schedule.id) }}" style="display: inline;">
+                                        <button type="submit" class="btn btn-outline-danger" onclick="return confirm('정말 삭제하시겠습니까?')">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+    {% else %}
+    <div class="alert alert-info">
+        <i class="fas fa-info-circle"></i> 등록된 스케줄이 없습니다.
+        <button type="button" class="btn btn-sm btn-primary ms-2" data-bs-toggle="collapse" data-bs-target="#addScheduleForm">
+            첫 번째 스케줄을 추가해보세요!
+        </button>
+    </div>
+    {% endif %}
+</div>
+
+<!-- 스케줄 수정 모달 -->
+<div class="modal fade" id="editScheduleModal" tabindex="-1" aria-labelledby="editScheduleModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editScheduleModalLabel">
+                    <i class="fas fa-edit"></i> 스케줄 수정
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editScheduleForm" method="POST">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label for="edit_hour" class="form-label">시간 *</label>
+                                <select class="form-select" id="edit_hour" name="edit_hour" required>
+                                    <option value="0">00시 (자정)</option>
+                                    <option value="1">01시</option>
+                                    <option value="2">02시</option>
+                                    <option value="3">03시</option>
+                                    <option value="4">04시</option>
+                                    <option value="5">05시</option>
+                                    <option value="6">06시</option>
+                                    <option value="7">07시</option>
+                                    <option value="8">08시</option>
+                                    <option value="9" selected>09시</option>
+                                    <option value="10">10시</option>
+                                    <option value="11">11시</option>
+                                    <option value="12">12시 (정오)</option>
+                                    <option value="13">13시</option>
+                                    <option value="14">14시</option>
+                                    <option value="15">15시</option>
+                                    <option value="16">16시</option>
+                                    <option value="17">17시</option>
+                                    <option value="18">18시</option>
+                                    <option value="19">19시</option>
+                                    <option value="20">20시</option>
+                                    <option value="21">21시</option>
+                                    <option value="22">22시</option>
+                                    <option value="23">23시</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label for="edit_minute" class="form-label">분</label>
+                                <select class="form-select" id="edit_minute" name="edit_minute">
+                                    <option value="0" selected>00분</option>
+                                    <option value="5">05분</option>
+                                    <option value="10">10분</option>
+                                    <option value="15">15분</option>
+                                    <option value="20">20분</option>
+                                    <option value="25">25분</option>
+                                    <option value="30">30분</option>
+                                    <option value="35">35분</option>
+                                    <option value="40">40분</option>
+                                    <option value="45">45분</option>
+                                    <option value="50">50분</option>
+                                    <option value="55">55분</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label for="edit_frequency" class="form-label">실행 주기</label>
+                                <select class="form-select" id="edit_frequency" name="edit_frequency">
+                                    <option value="daily" selected>매일</option>
+                                    <option value="weekly">매주</option>
+                                    <option value="workdays">월~금</option>
+                                    <option value="weekends">토~일</option>
+                                    <option value="monthly">매월</option>
+                                    <option value="interval">간격</option>
+                                    <option value="multiple">여러 시간</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label class="form-label">활성화</label>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="edit_is_active" name="is_active" checked>
+                                    <label class="form-check-label" for="edit_is_active">
+                                        활성화
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 주간/월간 설정 (조건부 표시) -->
+                    <div class="row mt-3" id="edit_weeklySettings" style="display: none;">
+                        <div class="col-md-12">
+                            <label class="form-label">요일</label>
+                            <div class="row">
+                                <div class="col-md-1">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="edit_weekday_0" value="0">
+                                        <label class="form-check-label" for="edit_weekday_0">일</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-1">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="edit_weekday_1" value="1">
+                                        <label class="form-check-label" for="edit_weekday_1">월</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-1">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="edit_weekday_2" value="2">
+                                        <label class="form-check-label" for="edit_weekday_2">화</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-1">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="edit_weekday_3" value="3">
+                                        <label class="form-check-label" for="edit_weekday_3">수</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-1">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="edit_weekday_4" value="4">
+                                        <label class="form-check-label" for="edit_weekday_4">목</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-1">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="edit_weekday_5" value="5">
+                                        <label class="form-check-label" for="edit_weekday_5">금</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-1">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="edit_weekday_6" value="6">
+                                        <label class="form-check-label" for="edit_weekday_6">토</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mt-3" id="edit_monthlySettings" style="display: none;">
+                        <div class="col-md-6">
+                            <label class="form-label">일</label>
+                            <select class="form-select" id="edit_day" name="edit_day">
+                                <option value="1">1일</option>
+                                <option value="15">15일</option>
+                                <option value="28">28일</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="row mt-3" id="edit_intervalSettings" style="display: none;">
+                        <div class="col-md-6">
+                            <label class="form-label">간격</label>
+                            <select class="form-select" id="edit_interval" name="edit_interval">
+                                <option value="1">1시간마다</option>
+                                <option value="6">6시간마다</option>
+                                <option value="12">12시간마다</option>
+                                <option value="24">24시간마다</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="row mt-3" id="edit_multipleSettings" style="display: none;">
+                        <div class="col-md-6">
+                            <label class="form-label">여러 시간 설정</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="edit_multipleTimes" name="edit_multipleTimes" placeholder="예: 9,18 (9시, 18시)">
+                                <span class="input-group-text">시</span>
+                            </div>
+                            <div class="form-text">여러 시간은 쉼표로 구분하세요.</div>
+                        </div>
+                    </div>
+                    
+                    <!-- 숨겨진 Cron 표현식 필드 -->
+                    <input type="hidden" id="edit_cron_expression" name="cron_expression" value="0 9 * * *">
+                    
+                    <div class="mt-3">
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i> 
+                            <strong>설정된 실행 시간:</strong> 
+                            <span id="edit_cronDescription">매일 09시 00분</span>
+                            <br>
+                            <small class="text-muted">⚠️ 모든 시간은 KST(한국 표준시) 기준입니다.</small>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                <button type="submit" form="editScheduleForm" class="btn btn-primary">저장</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// 전역 변수로 현재 모드 저장
+let currentModalMode = 'add';
+
+// 폼이 열릴 때 자동으로 기본값 설정
+document.addEventListener('DOMContentLoaded', function() {
+    // 스케줄 추가 폼이 열릴 때 기본값 설정
+    const addScheduleForm = document.getElementById('addScheduleForm');
+    if (addScheduleForm) {
+        addScheduleForm.addEventListener('shown.bs.collapse', function() {
+            setTimeout(() => {
+                generateCron('add');
+            }, 300);
+        });
+    }
+    
+    // 주기 설정에 따른 UI 변경 (추가 폼)
+    document.getElementById('frequency').addEventListener('change', function() {
+        updateFrequencyUI('add');
+    });
+    
+    // 주기 설정에 따른 UI 변경 (수정 폼)
+    document.getElementById('edit_frequency').addEventListener('change', function() {
+        updateFrequencyUI('edit');
+    });
+    
+    // 시간/분/주기 변경 시 Cron 자동 업데이트 (추가 폼)
+    document.getElementById('hour').addEventListener('change', function() { generateCron('add'); });
+    document.getElementById('minute').addEventListener('change', function() { generateCron('add'); });
+    document.getElementById('day').addEventListener('change', function() { generateCron('add'); });
+    document.getElementById('interval').addEventListener('change', function() { generateCron('add'); });
+    document.getElementById('multipleTimes').addEventListener('input', function() { generateCron('add'); });
+    
+    // 요일 체크박스 변경 시 Cron 자동 업데이트 (추가 폼)
+    for (let i = 0; i <= 6; i++) {
+        document.getElementById(`weekday_${i}`).addEventListener('change', function() { generateCron('add'); });
+    }
+    
+    // 시간/분/주기 변경 시 Cron 자동 업데이트 (수정 폼)
+    document.getElementById('edit_hour').addEventListener('change', function() { generateCron('edit'); });
+    document.getElementById('edit_minute').addEventListener('change', function() { generateCron('edit'); });
+    document.getElementById('edit_day').addEventListener('change', function() { generateCron('edit'); });
+    document.getElementById('edit_interval').addEventListener('change', function() { generateCron('edit'); });
+    document.getElementById('edit_multipleTimes').addEventListener('input', function() { generateCron('edit'); });
+    
+    // 요일 체크박스 변경 시 Cron 자동 업데이트 (수정 폼)
+    for (let i = 0; i <= 6; i++) {
+        document.getElementById(`edit_weekday_${i}`).addEventListener('change', function() { generateCron('edit'); });
+    }
+});
+
+function updateFrequencyUI(mode) {
+    const prefix = mode === 'edit' ? 'edit_' : '';
+    const frequency = document.getElementById(prefix + 'frequency').value;
+    
+    // 모든 설정 숨기기
+    document.getElementById(prefix + 'weeklySettings').style.display = 'none';
+    document.getElementById(prefix + 'monthlySettings').style.display = 'none';
+    document.getElementById(prefix + 'intervalSettings').style.display = 'none';
+    document.getElementById(prefix + 'multipleSettings').style.display = 'none';
+    
+    // 시간/분 드롭다운 활성화
+    document.getElementById(prefix + 'hour').disabled = false;
+    document.getElementById(prefix + 'minute').disabled = false;
+    
+    // 선택된 설정만 보이기
+    if (frequency === 'weekly') {
+        document.getElementById(prefix + 'weeklySettings').style.display = 'block';
+    } else if (frequency === 'monthly') {
+        document.getElementById(prefix + 'monthlySettings').style.display = 'block';
+    } else if (frequency === 'interval') {
+        document.getElementById(prefix + 'intervalSettings').style.display = 'block';
+    } else if (frequency === 'multiple') {
+        document.getElementById(prefix + 'multipleSettings').style.display = 'block';
+        // 여러시간 선택 시 시간/분 드롭다운 비활성화
+        document.getElementById(prefix + 'hour').disabled = true;
+        document.getElementById(prefix + 'minute').disabled = true;
+    } else if (frequency === 'workdays') {
+        document.getElementById(prefix + 'weeklySettings').style.display = 'block';
+        // 월~금 자동 체크
+        for (let i = 1; i <= 5; i++) {
+            document.getElementById(prefix + `weekday_${i}`).checked = true;
+        }
+        document.getElementById(prefix + 'weekday_0').checked = false;
+        document.getElementById(prefix + 'weekday_6').checked = false;
+    } else if (frequency === 'weekends') {
+        document.getElementById(prefix + 'weeklySettings').style.display = 'block';
+        // 토~일 자동 체크
+        for (let i = 1; i <= 5; i++) {
+            document.getElementById(prefix + `weekday_${i}`).checked = false;
+        }
+        document.getElementById(prefix + 'weekday_0').checked = true;
+        document.getElementById(prefix + 'weekday_6').checked = true;
+    }
+    
+    // Cron 업데이트
+    generateCron(mode);
+}
+
+function generateCron(mode) {
+    const prefix = mode === 'edit' ? 'edit_' : '';
+    
+    const hour = document.getElementById(prefix + 'hour').value;
+    const minute = document.getElementById(prefix + 'minute').value;
+    const frequency = document.getElementById(prefix + 'frequency').value;
+    
+    let cron = '';
+    let description = '';
+    
+    if (frequency === 'daily') {
+        cron = `${minute} ${hour} * * *`;
+        description = `매일 ${hour}시 ${minute}분`;
+    } else if (frequency === 'weekly') {
+        const selectedWeekdays = Array.from(document.querySelectorAll(`#${prefix}weeklySettings input[type="checkbox"]:checked`)).map(cb => cb.value);
+        if (selectedWeekdays.length === 0) {
+            cron = `${minute} ${hour} * * *`;
+            description = `매일 ${hour}시 ${minute}분 (요일 미선택)`;
+        } else {
+            cron = `${minute} ${hour} * * ${selectedWeekdays.join(',')}`;
+            const weekdays = ['일', '월', '화', '수', '목', '금', '토'];
+            description = `매주 ${selectedWeekdays.map(day => weekdays[parseInt(day) - 1]).join(' ')}요일 ${hour}시 ${minute}분`;
+        }
+    } else if (frequency === 'monthly') {
+        const day = document.getElementById(prefix + 'day').value;
+        cron = `${minute} ${hour} ${day} * *`;
+        description = `매월 ${day}일 ${hour}시 ${minute}분`;
+    } else if (frequency === 'interval') {
+        const interval = document.getElementById(prefix + 'interval').value;
+        cron = `0 */${interval} * * *`;
+        description = `${interval}시간마다`;
+    } else if (frequency === 'multiple') {
+        const multipleTimes = document.getElementById(prefix + 'multipleTimes').value;
+        if (!multipleTimes) {
+            cron = `${minute} ${hour} * * *`;
+            description = `매일 ${hour}시 ${minute}분 (시간 미입력)`;
+        } else {
+            cron = `${minute} ${multipleTimes.split(',').map(t => parseInt(t)).join(',')} * * *`;
+            description = `${multipleTimes.split(',').map(t => `${t}시`).join(' ')} ${minute}분`;
+        }
+    } else if (frequency === 'workdays') {
+        cron = `${minute} ${hour} * * 1-5`;
+        description = `월~금 ${hour}시 ${minute}분`;
+    } else if (frequency === 'weekends') {
+        cron = `${minute} ${hour} * * 6-0`;
+        description = `토~일 ${hour}시 ${minute}분`;
+    }
+    
+    // Cron 표현식과 설명 업데이트
+    document.getElementById(prefix + 'cron_expression').value = cron;
+    document.getElementById(prefix + 'cronDescription').textContent = description;
+}
+
+function editSchedule(scheduleId, cronExpression, isActive) {
+    // 폼 액션 설정
+    document.getElementById('editScheduleForm').action = `/schedules/${scheduleId}/edit`;
+    
+    // 수정 모달 표시
+    const editModal = new bootstrap.Modal(document.getElementById('editScheduleModal'));
+    editModal.show();
+    
+    // 기존 Cron 표현식을 분석하여 설정값 복원
+    if (cronExpression) {
+        try {
+            const parts = cronExpression.split(' ');
+            if (parts.length === 5) {
+                const [minute, hour, day, month, weekday] = parts;
+                
+                // 시간과 분 설정
+                document.getElementById('edit_minute').value = minute;
+                document.getElementById('edit_hour').value = hour;
+                
+                // 주기 설정
+                if (weekday === '1-5') {
+                    document.getElementById('edit_frequency').value = 'workdays';
+                } else if (weekday === '6-0') {
+                    document.getElementById('edit_frequency').value = 'weekends';
+                } else if (weekday === '*') {
+                    document.getElementById('edit_frequency').value = 'daily';
+                } else if (weekday.includes(',')) {
+                    document.getElementById('edit_frequency').value = 'weekly';
+                    // 요일 체크박스 설정
+                    const weekdays = weekday.split(',');
+                    weekdays.forEach(day => {
+                        const checkbox = document.getElementById(`edit_weekday_${day}`);
+                        if (checkbox) checkbox.checked = true;
+                    });
+                }
+                
+                // 활성화 상태 설정 (문자열 비교 수정)
+                const isActiveBool = isActive === true || isActive === 'true' || isActive === 1 || isActive === '1';
+                document.getElementById('edit_is_active').checked = isActiveBool;
+                
+                // UI 업데이트
+                updateFrequencyUI('edit');
+            }
+        } catch (e) {
+            console.log('Cron 표현식 분석 실패:', e);
+            // 기본값 설정
+            document.getElementById('edit_frequency').value = 'daily';
+            const isActiveBool = isActive === true || isActive === 'true' || isActive === 1 || isActive === '1';
+            document.getElementById('edit_is_active').checked = isActiveBool;
+            updateFrequencyUI('edit');
+        }
+    }
+}
+
+function checkSchedulerStatus() {
+    // 로딩 표시
+    const statusButton = document.querySelector('button[onclick="checkSchedulerStatus()"]');
+    const originalText = statusButton.innerHTML;
+    statusButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 확인 중...';
+    statusButton.disabled = true;
+    
+    fetch('/api/scheduler-status')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showSchedulerStatusModal(data);
+            } else {
+                alert('스케줄러 상태 확인 실패: ' + data.error);
+            }
+        })
+        .catch(error => {
+            alert('스케줄러 상태 확인 중 오류 발생: ' + error);
+        })
+        .finally(() => {
+            // 버튼 복원
+            statusButton.innerHTML = originalText;
+            statusButton.disabled = false;
+        });
+}
+
+function showSchedulerStatusModal(data) {
+    // 기존 모달이 있다면 제거
+    const existingModal = document.getElementById('schedulerStatusModal');
+    if (existingModal) {
+        existingModal.remove();
+    }
+    
+    // 모달 생성
+    const modal = document.createElement('div');
+    modal.className = 'modal fade';
+    modal.id = 'schedulerStatusModal';
+    modal.innerHTML = `
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-info-circle"></i> 스케줄러 상태
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row mb-3">
+                        <div class="col-md-3">
+                            <div class="card bg-primary text-white">
+                                <div class="card-body text-center">
+                                    <h6>스케줄러 상태</h6>
+                                    <h4>${data.scheduler_running ? '실행 중' : '중지됨'}</h4>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-success text-white">
+                                <div class="card-body text-center">
+                                    <h6>등록된 작업</h6>
+                                    <h4>${data.total_jobs}</h4>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-info text-white">
+                                <div class="card-body text-center">
+                                    <h6>총 스케줄</h6>
+                                    <h4>${data.total_schedules}</h4>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-warning text-white">
+                                <div class="card-body text-center">
+                                    <h6>활성 스케줄</h6>
+                                    <h4>${data.active_schedules}</h4>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-12">
+                            <h6><i class="fas fa-clock"></i> 스케줄 상세 정보</h6>
+                            <div class="table-responsive">
+                                <table class="table table-sm table-hover">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>작업명</th>
+                                            <th>Cron 표현식</th>
+                                            <th>상태</th>
+                                            <th>스케줄러 등록</th>
+                                            <th>마지막 실행</th>
+                                            <th>다음 실행</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${data.schedules.map(schedule => `
+                                            <tr>
+                                                <td><span class="badge bg-secondary">#${schedule.id}</span></td>
+                                                <td>${schedule.job_name}</td>
+                                                <td><code>${schedule.cron_expression}</code></td>
+                                                <td>
+                                                    ${schedule.is_active ? 
+                                                        '<span class="badge bg-success">활성</span>' : 
+                                                        '<span class="badge bg-secondary">비활성</span>'
+                                                    }
+                                                </td>
+                                                <td>
+                                                    ${schedule.scheduler_registered ? 
+                                                        '<span class="badge bg-success">등록됨</span>' : 
+                                                        '<span class="badge bg-danger">미등록</span>'
+                                                    }
+                                                </td>
+                                                <td>${schedule.last_run || '-'}</td>
+                                                <td>
+                                                    ${schedule.next_run_from_scheduler ? 
+                                                        `<div>${schedule.next_run_from_scheduler}</div>` : 
+                                                        '-'
+                                                    }
+                                                </td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mt-3">
+                        <div class="col-md-12">
+                            <h6><i class="fas fa-cogs"></i> 스케줄러 작업 목록</h6>
+                            <div class="table-responsive">
+                                <table class="table table-sm table-hover">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>작업 ID</th>
+                                            <th>트리거</th>
+                                            <th>다음 실행</th>
+                                            <th>상대적 시간</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${data.jobs.map(job => `
+                                            <tr>
+                                                <td><code>${job.id}</code></td>
+                                                <td><code>${job.trigger}</code></td>
+                                                <td>${job.next_run_time || '-'}</td>
+                                                <td>
+                                                    ${job.next_run_relative ? 
+                                                        `<span class="badge bg-info">${job.next_run_relative}</span>` : 
+                                                        '-'
+                                                    }
+                                                </td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-3">
+                        <small class="text-muted">
+                            <i class="fas fa-info-circle"></i> 
+                            현재 시간: ${data.current_time} (KST)
+                        </small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>
+                    <button type="button" class="btn btn-primary" onclick="checkSchedulerStatus()">
+                        <i class="fas fa-sync-alt"></i> 새로고침
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // 모달을 body에 추가
+    document.body.appendChild(modal);
+    
+    // 모달 표시
+    const bootstrapModal = new bootstrap.Modal(modal);
+    bootstrapModal.show();
+    
+    // 모달이 닫힐 때 DOM에서 제거
+    modal.addEventListener('hidden.bs.modal', function() {
+        modal.remove();
+    });
+}
+
+function testSchedule(scheduleId) {
+    if (confirm('이 스케줄을 지금 테스트 실행하시겠습니까?')) {
+        fetch(`/api/test-schedule/${scheduleId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('테스트 실행 완료!\n\n' + 
+                          '스케줄 ID: ' + data.schedule_id + '\n' +
+                          '작업 ID: ' + data.job_id + '\n' +
+                          '실행 결과: ' + (data.execution_success ? '성공' : '실패'));
+                    
+                    // 페이지 새로고침
+                    location.reload();
+                } else {
+                    alert('테스트 실행 실패: ' + data.error);
+                }
+            })
+            .catch(error => {
+                alert('테스트 실행 중 오류 발생: ' + error);
+            });
+    }
+}
+
+function restoreSchedules() {
+    if (confirm('스케줄러 등록을 복원하시겠습니까?')) {
+        // 로딩 표시
+        const restoreButton = document.querySelector('button[onclick="restoreSchedules()"]');
+        const originalText = restoreButton.innerHTML;
+        restoreButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 복원 중...';
+        restoreButton.disabled = true;
+        
+        fetch('/api/restore-schedules', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(`스케줄러 등록이 복원되었습니다!\n\n성공: ${data.restored_count}개\n실패: ${data.failed_count}개`);
+                // 페이지 새로고침
+                location.reload();
+            } else {
+                alert('스케줄러 등록 복원 실패: ' + data.error);
+            }
+        })
+        .catch(error => {
+            alert('스케줄러 등록 복원 중 오류 발생: ' + error);
+        })
+        .finally(() => {
+            // 버튼 복원
+            restoreButton.innerHTML = originalText;
+            restoreButton.disabled = false;
+        });
+    }
+}
+</script>
+{% endblock %} 

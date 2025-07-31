@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+
+{% block title %}배치 작업 추가{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title mb-0">
+                        <i class="fas fa-plus"></i> 새 배치 작업 추가
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="name" class="form-label">작업명 *</label>
+                                    <input type="text" class="form-control" id="name" name="name" required placeholder="예: 고객 데이터 동기화">
+                                    <div class="form-text">작업을 구분하기 위한 이름을 입력하세요.</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="source_server" class="form-label">소스 서버 *</label>
+                                    <select class="form-select" id="source_server" name="source_server" required>
+                                        <option value="">서버 선택</option>
+                                        {% for server in servers %}
+                                        <option value="{{ server.name }}">{{ server.name }} ({{ server.type }})</option>
+                                        {% endfor %}
+                                    </select>
+                                    <div class="form-text">데이터를 가져올 원본 데이터베이스 서버를 선택하세요.</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="description" class="form-label">설명</label>
+                            <textarea class="form-control" id="description" name="description" rows="2" placeholder="작업에 대한 간단한 설명을 입력하세요."></textarea>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="query" class="form-label">쿼리 *</label>
+                            <textarea class="form-control" id="query" name="query" rows="4" required placeholder="SELECT * FROM table_name WHERE condition"></textarea>
+                            <div class="form-text">소스 데이터베이스에서 실행할 SQL 쿼리를 입력하세요. 이 쿼리의 결과가 타겟 테이블에 저장됩니다.</div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="target_server" class="form-label">타겟 서버 *</label>
+                                    <select class="form-select" id="target_server" name="target_server" required>
+                                        <option value="">서버 선택</option>
+                                        {% for server in servers %}
+                                        <option value="{{ server.name }}">{{ server.name }} ({{ server.type }})</option>
+                                        {% endfor %}
+                                    </select>
+                                    <div class="form-text">데이터를 저장할 대상 데이터베이스 서버를 선택하세요.</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="target_table" class="form-label">타겟 테이블 *</label>
+                                    <input type="text" class="form-control" id="target_table" name="target_table" required placeholder="예: customer_data">
+                                    <div class="form-text">데이터를 저장할 테이블명을 입력하세요. 테이블이 없으면 자동으로 생성됩니다.</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="chunk_size" class="form-label">청크 크기</label>
+                                    <input type="number" class="form-control" id="chunk_size" name="chunk_size" value="10000" min="1000" max="100000">
+                                    <div class="form-text">한 번에 처리할 행 수입니다. 메모리 사용량과 성능에 영향을 줍니다. (기본값: 10,000)</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="num_workers" class="form-label">워커 수</label>
+                                    <input type="number" class="form-control" id="num_workers" name="num_workers" value="4" min="1" max="16">
+                                    <div class="form-text">병렬 처리할 워커 수입니다. CPU 코어 수에 따라 조정하세요. (기본값: 4)</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 증분 동기화 설정 -->
+                        <div class="card mb-3">
+                            <div class="card-header">
+                                <h6 class="mb-0">
+                                    <i class="fas fa-sync-alt"></i> 증분 동기화 설정
+                                    <button type="button" class="btn btn-sm btn-outline-info ms-2" data-bs-toggle="collapse" data-bs-target="#syncHelp">
+                                        <i class="fas fa-question-circle"></i> 도움말
+                                    </button>
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="collapse mb-3" id="syncHelp">
+                                    <div class="alert alert-info">
+                                        <h6><i class="fas fa-info-circle"></i> 증분 동기화란?</h6>
+                                        <p class="mb-2">전체 데이터를 매번 복사하는 대신, 변경된 데이터만 동기화하는 방식입니다.</p>
+                                        <ul class="mb-0">
+                                            <li><strong>타임스탬프</strong>: 마지막 수정 시간을 기준으로 변경된 데이터만 동기화</li>
+                                            <li><strong>시퀀스</strong>: ID나 시퀀스 번호를 기준으로 새로 추가된 데이터만 동기화</li>
+                                            <li><strong>해시</strong>: 데이터 내용의 해시값을 비교하여 변경된 데이터만 동기화</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="incremental_sync" name="incremental_sync">
+                                                <label class="form-check-label" for="incremental_sync">
+                                                    <strong>증분 동기화 사용</strong>
+                                                </label>
+                                            </div>
+                                            <div class="form-text">체크하면 변경된 데이터만 동기화하여 처리 속도를 높일 수 있습니다.</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="sync_strategy" class="form-label">동기화 전략</label>
+                                            <select class="form-select" id="sync_strategy" name="sync_strategy">
+                                                <option value="timestamp">타임스탬프 (수정 시간 기준)</option>
+                                                <option value="sequence">시퀀스 (ID/번호 기준)</option>
+                                                <option value="hash">해시 (데이터 내용 기준)</option>
+                                            </select>
+                                            <div class="form-text">변경 사항을 감지하는 방법을 선택하세요.</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="sync_key_column" class="form-label">동기화 키 컬럼</label>
+                                            <input type="text" class="form-control" id="sync_key_column" name="sync_key_column" placeholder="예: updated_at, id, version">
+                                            <div class="form-text">변경 사항을 추적할 컬럼명을 입력하세요. (여러 개는 쉼표로 구분)</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="last_sync_value" class="form-label">마지막 동기화 값</label>
+                                            <input type="text" class="form-control" id="last_sync_value" name="last_sync_value" placeholder="자동으로 업데이트됩니다" readonly>
+                                            <div class="form-text">마지막으로 동기화된 값을 저장합니다. 수동으로 입력할 수도 있습니다.</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <a href="{{ url_for('jobs') }}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> 취소
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> 저장
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+
+{% block title %}서버 수정 - FS Master{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">
+        <i class="fas fa-edit me-2"></i>
+        서버 수정
+    </h1>
+    <a href="{{ url_for('servers') }}" class="btn btn-outline-secondary">
+        <i class="fas fa-arrow-left me-2"></i>
+        목록으로
+    </a>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="fas fa-server me-2"></i>
+                    서버 정보 수정
+                </h6>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="name" class="form-label">서버명 *</label>
+                            <input type="text" class="form-control" id="name" name="name" value="{{ server.name }}" required>
+                            <div class="form-text">고유한 서버 이름을 입력하세요 (예: FS1, local_pgsql)</div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="type" class="form-label">데이터베이스 타입 *</label>
+                            <select class="form-select" id="type" name="type" required>
+                                <option value="">타입을 선택하세요</option>
+                                <option value="postgresql" {{ 'selected' if server.type == 'postgresql' }}>PostgreSQL</option>
+                                <option value="informix" {{ 'selected' if server.type == 'informix' }}>Informix</option>
+                                <option value="altibase" {{ 'selected' if server.type == 'altibase' }}>Altibase</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="host" class="form-label">호스트 *</label>
+                            <input type="text" class="form-control" id="host" name="host" value="{{ server.host }}" required>
+                            <div class="form-text">서버 IP 주소 또는 도메인명</div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="port" class="form-label">포트 *</label>
+                            <input type="number" class="form-control" id="port" name="port" value="{{ server.port }}" required>
+                            <div class="form-text">데이터베이스 포트 번호</div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="database" class="form-label">데이터베이스명 *</label>
+                            <input type="text" class="form-control" id="database" name="database" value="{{ server.database }}" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="user" class="form-label">사용자명 *</label>
+                            <input type="text" class="form-control" id="user" name="user" value="{{ server.user }}" required>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="password" class="form-label">비밀번호 *</label>
+                        <input type="password" class="form-control" id="password" name="password" value="{{ server.password }}" required>
+                        <div class="form-text">기존 비밀번호를 유지하려면 현재 비밀번호를 다시 입력하세요</div>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-2"></i>
+                            서버 수정
+                        </button>
+                        <a href="{{ url_for('servers') }}" class="btn btn-outline-secondary">
+                            취소
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 도움말 -->
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    설정 가이드
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <h6>PostgreSQL</h6>
+                        <ul class="list-unstyled small">
+                            <li>• 기본 포트: 5432</li>
+                            <li>• 사용자: postgres</li>
+                            <li>• 데이터베이스: 생성된 DB명</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-4">
+                        <h6>Informix</h6>
+                        <ul class="list-unstyled small">
+                            <li>• 기본 포트: 8586</li>
+                            <li>• 사용자: 일반 사용자</li>
+                            <li>• JDBC 드라이버 필요</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-4">
+                        <h6>Altibase</h6>
+                        <ul class="list-unstyled small">
+                            <li>• 기본 포트: 20300</li>
+                            <li>• 사용자: sys</li>
+                            <li>• JDBC 드라이버 필요</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// 데이터베이스 타입에 따른 기본 포트 설정
+document.getElementById('type').addEventListener('change', function() {
+    const portInput = document.getElementById('port');
+    const type = this.value;
+    
+    switch(type) {
+        case 'postgresql':
+            portInput.value = '5432';
+            break;
+        case 'informix':
+            portInput.value = '8586';
+            break;
+        case 'altibase':
+            portInput.value = '20300';
+            break;
+        default:
+            portInput.value = '';
+    }
+});
+</script>
+{% endblock %} 

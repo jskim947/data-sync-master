@@ -1,0 +1,225 @@
+{% extends "base.html" %}
+
+{% block title %}서버 관리 - FS Master{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">
+        <i class="fas fa-server me-2"></i>
+        서버 관리
+    </h1>
+    <div>
+        <button type="button" class="btn btn-info me-2" onclick="viewLogs()">
+            <i class="fas fa-file-alt me-2"></i>
+            연결 로그 확인
+        </button>
+        <button type="button" class="btn btn-warning me-2" onclick="diagnoseJar('Altibase.jar')">
+            <i class="fas fa-search me-2"></i>
+            Altibase JAR 진단
+        </button>
+        <button type="button" class="btn btn-warning me-2" onclick="diagnoseJar('ifxjdbc.jar')">
+            <i class="fas fa-search me-2"></i>
+            Informix JAR 진단
+        </button>
+        <a href="{{ url_for('add_server') }}" class="btn btn-primary">
+            <i class="fas fa-plus me-2"></i>
+            서버 추가
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="fas fa-list me-2"></i>
+                    등록된 서버 목록
+                </h6>
+            </div>
+            <div class="card-body">
+                {% if servers %}
+                <div class="table-responsive">
+                    <table class="table table-bordered" width="100%" cellspacing="0">
+                        <thead>
+                            <tr>
+                                <th>서버명</th>
+                                <th>타입</th>
+                                <th>호스트</th>
+                                <th>포트</th>
+                                <th>데이터베이스</th>
+                                <th>사용자</th>
+                                <th>등록일</th>
+                                <th>작업</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for server in servers %}
+                            <tr>
+                                <td>
+                                    <strong>{{ server.name }}</strong>
+                                </td>
+                                <td>
+                                    <span class="badge bg-{{ 'primary' if server.type == 'postgresql' else 'secondary' }}">
+                                        {{ server.type }}
+                                    </span>
+                                </td>
+                                <td>{{ server.host }}</td>
+                                <td>{{ server.port }}</td>
+                                <td>{{ server.database }}</td>
+                                <td>{{ server.user }}</td>
+                                <td>{{ server.created_at.strftime('%Y-%m-%d') }}</td>
+                                <td>
+                                    <div class="btn-group" role="group">
+                                        <button type="button" class="btn btn-sm btn-outline-success" 
+                                                onclick="testConnection('{{ server.name }}')" 
+                                                title="연결 테스트">
+                                            <i class="fas fa-plug"></i>
+                                        </button>
+                                        <a href="{{ url_for('edit_server', server_id=server.id) }}" 
+                                           class="btn btn-sm btn-outline-primary" title="수정">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        <button type="button" class="btn btn-sm btn-outline-danger" 
+                                                onclick="deleteServer({{ server.id }}, '{{ server.name }}')" title="삭제">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="fas fa-server fa-3x text-gray-300 mb-3"></i>
+                    <p class="text-gray-500">등록된 서버가 없습니다.</p>
+                    <a href="{{ url_for('add_server') }}" class="btn btn-primary">
+                        <i class="fas fa-plus me-2"></i>
+                        첫 번째 서버 추가
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 삭제 확인 모달 -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">서버 삭제 확인</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>정말로 서버 "<span id="serverNameToDelete"></span>"를 삭제하시겠습니까?</p>
+                <p class="text-danger"><small>이 작업은 되돌릴 수 없습니다.</small></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                <form id="deleteForm" method="POST" style="display: inline;">
+                    <button type="submit" class="btn btn-danger">삭제</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function deleteServer(serverId, serverName) {
+    document.getElementById('serverNameToDelete').textContent = serverName;
+    document.getElementById('deleteForm').action = `/servers/${serverId}/delete`;
+    
+    const deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+    deleteModal.show();
+}
+
+function testConnection(serverName) {
+    // 버튼 비활성화
+    const button = event.target.closest('button');
+    const originalContent = button.innerHTML;
+    button.disabled = true;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    
+    fetch(`/api/test-connection/${serverName}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(`✅ 연결 성공!\n${data.message || '서버에 정상적으로 연결되었습니다.'}`);
+        } else {
+            alert(`❌ 연결 실패!\n오류: ${data.error}`);
+        }
+    })
+    .catch(error => {
+        alert(`❌ 연결 테스트 중 오류 발생!\n${error.message}`);
+    })
+    .finally(() => {
+        // 버튼 복원
+        button.disabled = false;
+        button.innerHTML = originalContent;
+    });
+}
+
+function viewLogs() {
+    fetch('/api/db-logs')
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const logContent = data.logs.join('');
+            const logWindow = window.open('', '_blank', 'width=800,height=600');
+            logWindow.document.write(`
+                <html>
+                <head>
+                    <title>데이터베이스 연결 로그</title>
+                    <style>
+                        body { font-family: monospace; font-size: 12px; background: #1e1e1e; color: #d4d4d4; padding: 20px; }
+                        .log-line { margin: 2px 0; }
+                        .error { color: #ff6b6b; }
+                        .success { color: #51cf66; }
+                        .warning { color: #ffd43b; }
+                        .info { color: #74c0fc; }
+                    </style>
+                </head>
+                <body>
+                    <h3>데이터베이스 연결 로그 (최근 ${data.logs.length}줄)</h3>
+                    <div style="background: #2d2d2d; padding: 10px; border-radius: 5px; max-height: 500px; overflow-y: auto;">
+                        <pre>${logContent}</pre>
+                    </div>
+                </body>
+                </html>
+            `);
+        } else {
+            alert(`로그 확인 실패: ${data.error}`);
+        }
+    })
+    .catch(error => {
+        alert(`로그 확인 중 오류 발생: ${error.message}`);
+    });
+}
+
+function diagnoseJar(jarName) {
+    fetch(`/api/diagnose-jar/${jarName}`)
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(`✅ JAR 진단 완료!\n파일: ${jarName}\n크기: ${data.file_size} bytes\n\n로그를 확인하여 상세 정보를 보세요.`);
+        } else {
+            alert(`❌ JAR 진단 실패!\n오류: ${data.error}`);
+        }
+    })
+    .catch(error => {
+        alert(`JAR 진단 중 오류 발생: ${error.message}`);
+    });
+}
+</script>
+{% endblock %} 
