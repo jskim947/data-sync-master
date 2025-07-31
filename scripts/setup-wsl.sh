@@ -43,9 +43,7 @@ sudo apt install -y \
     build-essential \
     python3 \
     python3-pip \
-    python3-venv \
-    docker.io \
-    docker-compose
+    python3-venv
 
 if [ $? -eq 0 ]; then
     log_info "개발 도구 설치 완료"
@@ -78,11 +76,15 @@ else
     log_warn "Windows SSH 키 디렉토리를 찾을 수 없습니다"
 fi
 
-# 5. Docker 설정
-log_info "Docker 설정 중..."
-sudo service docker start
-sudo usermod -aG docker $USER
-log_info "Docker 설정 완료 (재로그인 필요)"
+# 5. Docker Engine 설치
+log_info "Docker Engine 설치 중..."
+if [ -f "scripts/install-docker-wsl.sh" ]; then
+    chmod +x scripts/install-docker-wsl.sh
+    ./scripts/install-docker-wsl.sh
+else
+    log_warn "Docker 설치 스크립트를 찾을 수 없습니다"
+    log_info "수동으로 Docker를 설치하세요: ./scripts/install-docker-wsl.sh"
+fi
 
 # 6. Python 가상환경 설정
 log_info "Python 가상환경 설정 중..."
