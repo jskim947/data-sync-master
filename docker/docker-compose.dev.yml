@@ -1,0 +1,64 @@
+version: '3.8'
+
+services:
+  # PostgreSQL 데이터베이스
+  postgres:
+    image: postgres:13
+    container_name: data-sync-postgres-dev
+    environment:
+      POSTGRES_DB: fs_master_web
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: infomax
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - dev-network
+
+  # Redis 캐시
+  redis:
+    image: redis:6-alpine
+    container_name: data-sync-redis-dev
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - dev-network
+
+  # 웹 애플리케이션 (개발용)
+  web:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.dev
+    container_name: data-sync-web-dev
+    ports:
+      - "5000:5000"
+    volumes:
+      # 소스 코드 볼륨 마운트 (실시간 반영)
+      - ../app.py:/app/app.py
+      - ../templates:/app/templates
+      - ../jdbc-drivers:/app/jdbc-drivers
+      - ../db_connection_test:/app/db_connection_test
+      - ../requirements.txt:/app/requirements.txt
+    environment:
+      - DATABASE_URL=postgresql://postgres:infomax@postgres:5432/fs_master_web
+      - REDIS_URL=redis://redis:6379/0
+      - FLASK_ENV=development
+      - FLASK_DEBUG=1
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - dev-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  dev-network:
+    driver: bridge 

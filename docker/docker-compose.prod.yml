@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  # PostgreSQL 데이터베이스 (운영용)
+  postgres:
+    image: postgres:13
+    container_name: data-sync-postgres-prod
+    environment:
+      POSTGRES_DB: fs_master_web
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-infomax}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data_prod:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - prod-network
+    restart: unless-stopped
+
+  # Redis 캐시 (운영용)
+  redis:
+    image: redis:6-alpine
+    container_name: data-sync-redis-prod
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data_prod:/data
+    networks:
+      - prod-network
+    restart: unless-stopped
+
+  # 웹 애플리케이션 (운영용)
+  web:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.prod
+    image: data-sync-web:prod
+    container_name: data-sync-web-prod
+    ports:
+      - "5000:5000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD:-infomax}@postgres:5432/fs_master_web
+      - REDIS_URL=redis://redis:6379/0
+      - FLASK_ENV=production
+      - FLASK_DEBUG=0
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - prod-network
+    restart: unless-stopped
+    # 운영용 로그 설정
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  postgres_data_prod:
+  redis_data_prod:
+
+networks:
+  prod-network:
+    driver: bridge 
