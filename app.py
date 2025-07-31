@@ -33,7 +33,7 @@ KST = timezone(timedelta(hours=9))
 app.config['TIMEZONE'] = KST
 
 # 환경변수에서 데이터베이스 설정 읽기 (Docker 환경)
-database_url = os.environ.get('DATABASE_URL', 'postgresql://postgres:infomax@localhost/fs_master_web')
+database_url = os.environ.get('DATABASE_URL')
 app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
@@ -380,7 +380,7 @@ def wait_for_postgres(max_retries=30, retry_interval=2):
                 port=os.environ.get('POSTGRES_PORT', 5432),
                 database=os.environ.get('POSTGRES_DB', 'fs_master_web'),
                 user=os.environ.get('POSTGRES_USER', 'postgres'),
-                password=os.environ.get('POSTGRES_PASSWORD', 'infomax')
+                password=os.environ.get('POSTGRES_PASSWORD')
             )
             conn.close()
             print("✅ PostgreSQL 연결 성공!")
@@ -3042,7 +3042,7 @@ def init_app():
                 port=5432,
                 database='fs_master_web',
                 user='postgres',
-                password='infomax'
+                password=os.environ.get('POSTGRES_PASSWORD')
             )
             db.session.add(local_server)
             db.session.commit()

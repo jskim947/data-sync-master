@@ -64,7 +64,7 @@ pip install -r requirements.txt
 ### 3단계: 환경 변수 설정
 `.env` 파일 생성:
 ```bash
-DATABASE_URL=postgresql://postgres:infomax@10.150.2.150:5432/fs_master_web
+DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD}@10.150.2.150:5432/fs_master_web
 REDIS_URL=redis://10.150.2.150:6379/0
 FLASK_ENV=development
 FLASK_DEBUG=1

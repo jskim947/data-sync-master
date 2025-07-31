@@ -6,7 +6,7 @@ services:
     environment:
       POSTGRES_DB: fs_master_web
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: infomax
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
       - "5432:5432"
     volumes:
@@ -33,7 +33,7 @@ services:
     environment:
       - FLASK_ENV=development
       - FLASK_DEBUG=1
-      - DATABASE_URL=postgresql://postgres:infomax@postgres:5432/fs_master_web
+      - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/fs_master_web
       - REDIS_URL=redis://redis:6379/0
     ports:
       - "5000:5000"
